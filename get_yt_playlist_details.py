@@ -1,11 +1,20 @@
+"""
+given a youtube playlist id generate <playlist_id>.json and <playlist_id>.csv files
+The json file will contain links to the highest resolution images for the channel and the playlist thumbails
+The csv file will contain a pipe separated list of everything needed to generate .nfo files for the videos.
+"""
 import requests
 import sys
 import os
+import csv
 import json
 
 YT_API_KEY = os.environ['YT_API_KEY']
-CHANNEL_ID = 'UCFAooJDn9izFea2JpAp8vUQ'
-PLAYLIST_ID = 'PLz4NmdSG1VFsneupYtKgU-DrdhcJIDbp1'
+if len(sys.argv) < 2:
+    print ('Error: Missing commandline arg')
+    sys.exit(1)
+
+playlist_id = sys.argv[1]
 
 def get_largest_thumbnail_url(thumbnails):
     largest_size_name = ''
@@ -54,9 +63,11 @@ def get_playlist_items(playlist_id: str):
             channel_id = playlist_item['snippet']['channelId']
             video_id = playlist_item['snippet']['resourceId']['videoId']
             video_title = playlist_item['snippet']['title']
+            position = playlist_item['snippet']['position']
             items.append({
                 'channel_id': channel_id,
                 'video_id': video_id,
+                'playlist_index': position + 1,
                 'video_title': video_title
             })
         if 'nextPageToken' not in playlist_data:
@@ -91,10 +102,36 @@ def get_playlist_info(channel_id: str, playlist_id: str):
         res = requests.get(BASE_URL, params=payload)
     return None
 
-playlist_items = get_playlist_items(PLAYLIST_ID)
+playlist_items = get_playlist_items(playlist_id)
 channel_id = playlist_items[0]['channel_id']
 if channel_id is not None:
-    playlist_info = get_playlist_info(channel_id, PLAYLIST_ID)
-    playlist_info['items'] = playlist_items
-    playlist_info['channel_info'] = get_channel_data(channel_id)
-print (playlist_info)
+    playlist_data = []
+    for playlist_item in playlist_items:
+        playlist_index = playlist_item['playlist_index']
+        video_id = playlist_item['video_id']
+        video_title = playlist_item['video_title']
+        new_item = {
+            'playlist_index': playlist_index,
+            'video_id': video_id,
+            'video_title': video_title
+        }
+        playlist_data.append(new_item)
+
+    channel_info = get_channel_data(channel_id)
+    playlist_info = get_playlist_info(channel_id, playlist_id)
+    user_name = channel_info['user_name']
+    playlist_name = playlist_info['title']
+    playlist_data = {
+        'channel_name': user_name,
+        'playlist_name': playlist_name,
+        'channel_thumbnail_url': channel_info['channel_thumbnail_url'],
+        'playlist_thumbnail_url': playlist_info['thumbnail_url']
+    }
+    with open(playlist_id + '.json', 'w') as json_file:
+        json.dump(playlist_data, json_file)
+    with open(playlist_id + '.csv', 'w') as csv_file:
+        writer = csv.DictWriter(csv_file,
+                                delimiter='|',
+                                fieldnames=['playlist_index', 'video_id', 'video_title'])
+        writer.writeheader()
+        writer.writerows(playlist_data)
