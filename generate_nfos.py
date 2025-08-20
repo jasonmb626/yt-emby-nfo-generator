@@ -35,10 +35,8 @@ files.extend(glob.glob(os.path.join(videos_dir, "*.mkv")))
 files.extend(glob.glob(os.path.join(videos_dir, "*.webm")))
 files.sort()
 
-out_base_path = sys.argv[2]
-playlist_id = sys.argv[3]
-json_file_path = playlist_id + ".json"
-csv_file_path = playlist_id + ".csv"
+json_file_path = os.path.join(videos_dir, 'playlist.json')
+csv_file_path = os.path.join(videos_dir, 'playlist.csv')
 
 if not os.path.exists(csv_file_path):
     print("Error: " + csv_file_path + " does not exist")
@@ -56,12 +54,8 @@ if not os.path.exists(json_file_path):
 
 with open(json_file_path, "r") as json_file:
     playlist_data = json.load(json_file)
-season_nbr = playlist_data["playlist_nbr"]
-out_path = os.path.join(
-    out_base_path, playlist_data["channel_name"], f"Season {season_nbr:03d}"
-)
-if not os.path.exists(out_path):
-    os.makedirs(out_path)
+    playlist_id = playlist_data['playlist_id']
+    season_nbr = playlist_data["playlist_nbr"]
 
 nfo_data = (
     SEASON_NFO_TEMPLATE.replace("%TITLE%", playlist_data["playlist_name"])
@@ -69,9 +63,8 @@ nfo_data = (
     .replace("%SE%", str(season_nbr))
     .replace("%CD%", playlist_id)
 )
-with open(os.path.join(out_path, "season.nfo"), "w") as nfo_file:
+with open(os.path.join(videos_dir, "season.nfo"), "w") as nfo_file:
     nfo_file.write(nfo_data)
-
 
 for file in files:
     base_file = os.path.basename(file)
@@ -95,5 +88,5 @@ for file in files:
         .replace("%EP%", str(playlist_index))
         .replace("%SE%", str(season_nbr))
     )
-    with open(os.path.join(out_path, nfo_file), "w") as nfo_file:
+    with open(os.path.join(videos_dir, nfo_file), "w") as nfo_file:
         nfo_file.write(nfo_data)

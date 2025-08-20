@@ -11,9 +11,19 @@ import csv
 import json
 
 YT_API_KEY = os.environ["YT_API_KEY"]
-if len(sys.argv) < 2:
+if len(sys.argv) < 3:
     print("Error: Missing commandline arg")
     sys.exit(1)
+
+playlist_id = sys.argv[1]
+out_base_path = sys.argv[2]
+
+
+def save_image(url: str, outfile_path: str):
+    img_data = requests.get(url).content
+    with open(outfile_path, "wb") as handler:
+        handler.write(img_data)
+
 
 playlist_id = sys.argv[1]
 
@@ -85,7 +95,12 @@ def get_playlist_info(channel_id: str, playlist_id: str):
             published_at = playlist["snippet"]["publishedAt"]
             thumbnails = playlist["snippet"]["thumbnails"]
             all_playlists.append(
-                {"id": id, "title": title, "published_at": published_at, "thumbnails": thumbnails}
+                {
+                    "id": id,
+                    "title": title,
+                    "published_at": published_at,
+                    "thumbnails": thumbnails,
+                }
             )
         if "nextPageToken" not in channel_playlist_data:
             break
@@ -114,37 +129,65 @@ def get_playlist_info(channel_id: str, playlist_id: str):
 
 raw_playlist_items = get_playlist_items(playlist_id)
 channel_id = raw_playlist_items[0]["channel_id"]
-if channel_id is not None:
-    playlist_items = []
-    for playlist_item in raw_playlist_items:
-        playlist_index = playlist_item["playlist_index"]
-        video_id = playlist_item["video_id"]
-        video_title = playlist_item["video_title"]
-        new_item = {
-            "playlist_index": playlist_index,
-            "video_id": video_id,
-            "video_title": video_title,
-        }
-        playlist_items.append(new_item)
+if channel_id is None:
+    print("Error: Unable to determine channel id. Exiting.")
+    sys.exit(2)
 
-    channel_info = get_channel_data(channel_id)
-    playlist_info = get_playlist_info(channel_id, playlist_id)
-    user_name = channel_info["user_name"]
-    playlist_name = playlist_info["title"]
-    playlist_data = {
-        "channel_name": user_name,
-        "playlist_name": playlist_name,
-        "channel_thumbnail_url": channel_info["channel_thumbnail_url"],
-        "playlist_thumbnail_url": playlist_info["thumbnail_url"],
-        "playlist_nbr": playlist_info['playlist_nbr']
+playlist_items = []
+for playlist_item in raw_playlist_items:
+    playlist_index = playlist_item["playlist_index"]
+    video_id = playlist_item["video_id"]
+    video_title = playlist_item["video_title"]
+    new_item = {
+        "playlist_index": playlist_index,
+        "video_id": video_id,
+        "video_title": video_title,
     }
-    with open(playlist_id + ".json", "w") as json_file:
-        json.dump(playlist_data, json_file)
-    with open(playlist_id + ".csv", "w") as csv_file:
-        writer = csv.DictWriter(
-            csv_file,
-            delimiter="|",
-            fieldnames=["playlist_index", "video_id", "video_title"],
-        )
-        writer.writeheader()
-        writer.writerows(playlist_items)
+    playlist_items.append(new_item)
+
+channel_info = get_channel_data(channel_id)
+playlist_info = get_playlist_info(channel_id, playlist_id)
+user_name = channel_info["user_name"]
+playlist_name = playlist_info["title"]
+season_nbr = playlist_info["playlist_nbr"]
+playlist_data = {
+    "channel_name": user_name,
+    "playlist_name": playlist_name,
+    "channel_thumbnail_url": channel_info["channel_thumbnail_url"],
+    "playlist_thumbnail_url": playlist_info["thumbnail_url"],
+    "playlist_id": playlist_id,
+    "playlist_nbr": playlist_info["playlist_nbr"],
+}
+channel_out_path = os.path.join(out_base_path, playlist_data["channel_name"])
+playlist_out_path = os.path.join(channel_out_path, f"Season {season_nbr:03d}")
+if not os.path.exists(playlist_out_path):
+    os.makedirs(playlist_out_path)
+with open(os.path.join(playlist_out_path, "dl_playlist.sh"), "w") as txt_file:
+    txt_file.write(
+        'yt-dlp -o "%(playlist_index)s - %(id)s - %(title)s.%(ext)s" --restrict-filenames "https://www.youtube.com/playlist?list='
+        + playlist_id
+        + '"'
+    )
+with open(os.path.join(playlist_out_path, "playlist.json"), "w") as json_file:
+    json.dump(playlist_data, json_file)
+with open(os.path.join(playlist_out_path, "playlist.csv"), "w") as csv_file:
+    writer = csv.DictWriter(
+        csv_file,
+        delimiter="|",
+        fieldnames=["playlist_index", "video_id", "video_title"],
+    )
+    writer.writeheader()
+    writer.writerows(playlist_items)
+
+out_playlist_thumbnail_path = os.path.join(
+    channel_out_path, f"season{season_nbr:02d}-poster.jpg"
+)
+if not os.path.exists(os.path.join(channel_out_path, "poster.jpg")):
+    save_image(
+        playlist_data["channel_thumbnail_url"],
+        os.path.join(channel_out_path, "poster.jpg"),
+    )
+save_image(
+    playlist_data["playlist_thumbnail_url"],
+    os.path.join(channel_out_path, out_playlist_thumbnail_path),
+)
