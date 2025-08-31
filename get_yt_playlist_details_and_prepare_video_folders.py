@@ -149,7 +149,7 @@ channel_info = get_channel_data(channel_id)
 playlist_info = get_playlist_info(channel_id, playlist_id)
 user_name = channel_info["user_name"]
 playlist_name = playlist_info["title"]
-season_nbr = playlist_info["playlist_nbr"]
+season_nbr = playlist_info["playlist_nbr"] + 1
 playlist_data = {
     "channel_name": user_name,
     "playlist_name": playlist_name,
