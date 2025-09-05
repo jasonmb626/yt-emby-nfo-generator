@@ -164,9 +164,17 @@ if not os.path.exists(playlist_out_path):
     os.makedirs(playlist_out_path)
 with open(os.path.join(playlist_out_path, "dl_playlist.sh"), "w") as txt_file:
     txt_file.write(
-        'yt-dlp -o "%(playlist_index)s - %(id)s - %(title)s.%(ext)s" --restrict-filenames "https://www.youtube.com/playlist?list='
-        + playlist_id
-        + '"'
+        f"""yt-dlp -o "%(playlist_index)s - %(id)s - %(title)s.%(ext)s" \\
+--sleep-interval 5 \\
+--max-sleep-interval 15 \\
+--retries infinite \\
+--fragment-retries infinite \\
+--concurrent-fragments 3 \\
+--compat-options filename-sanitization \\
+--extractor-args "youtube:player_client=default,-tv" \\
+-f "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]" \\
+--merge-output-format mp4 "https://www.youtube.com/playlist?list={playlist_id}"
+"""
     )
 with open(os.path.join(playlist_out_path, "playlist.json"), "w") as json_file:
     json.dump(playlist_data, json_file)
