@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 given a youtube playlist id generate <playlist_id>.json and <playlist_id>.csv files
 The json file will contain links to the highest resolution images for the channel and the playlist thumbails
