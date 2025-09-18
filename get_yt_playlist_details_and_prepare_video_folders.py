@@ -12,13 +12,15 @@ import csv
 import json
 
 YT_API_KEY = os.environ["YT_API_KEY"]
-if len(sys.argv) < 3:
+if len(sys.argv) < 2:
     print("Error: Missing commandline arg")
     sys.exit(1)
 
 playlist_id = sys.argv[1]
-out_base_path = sys.argv[2]
-
+if len(sys.argv) > 2:
+    out_base_path = sys.argv[2]
+else:
+    out_base_path = os.getcwd()
 
 def save_image(url: str, outfile_path: str):
     img_data = requests.get(url).content

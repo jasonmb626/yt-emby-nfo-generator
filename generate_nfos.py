@@ -30,7 +30,13 @@ VIDEO_NFO_TEMPLATE = """<?xml version="1.0" encoding="utf-8" standalone="yes"?>
   <season>%SE%</season>
 </episodedetails>"""
 
-videos_dir = sys.argv[1]
+if len(sys.argv) >1:
+    videos_dir = sys.argv[1]
+else:
+    videos_dir = os.getcwd()
+print(videos_dir)
+sys.exit()
+
 files = glob.glob(os.path.join(videos_dir, "*.mp4"))
 files.extend(glob.glob(os.path.join(videos_dir, "*.mkv")))
 files.extend(glob.glob(os.path.join(videos_dir, "*.webm")))
